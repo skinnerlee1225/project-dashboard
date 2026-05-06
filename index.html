@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多專案追蹤報表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F6F3;--bg-card:#FFF;--bg-s:#F0EFEC;--bg-h:#E8E7E3;
+  --t1:#1B1B18;--t2:#6B6B66;--t3:#9E9E97;
+  --bd:rgba(0,0,0,.06);--bd2:rgba(0,0,0,.1);
+  --blue:#3B82F6;--blue-bg:#EFF6FF;--blue-t:#1E40AF;
+  --green:#22C55E;--green-bg:#F0FDF4;--green-t:#166534;
+  --red:#EF4444;--red-bg:#FEF2F2;--red-t:#991B1B;
+  --amber:#F59E0B;--amber-bg:#FFFBEB;--amber-t:#92400E;
+  --purple:#8B5CF6;--purple-bg:#F5F3FF;--purple-t:#5B21B6;
+  --teal:#14B8A6;--teal-bg:#F0FDFA;--teal-t:#115E59;
+  --coral:#F97316;--coral-bg:#FFF7ED;--coral-t:#9A3412;
+  --pink:#EC4899;--pink-bg:#FDF2F8;--pink-t:#9D174D;
+  --r:12px;--r-lg:16px;--r-xl:20px;
+  --shadow:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.04),0 2px 4px rgba(0,0,0,.06);
+  --font:'Inter','Noto Sans TC',-apple-system,sans-serif;
+  --mono:'JetBrains Mono','SF Mono',monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111110;--bg-card:#1C1C1A;--bg-s:#232320;--bg-h:#2A2A27;
+  --t1:#EDEDEC;--t2:#A1A19A;--t3:#6B6B66;
+  --bd:rgba(255,255,255,.06);--bd2:rgba(255,255,255,.1);
+  --blue-bg:#172554;--blue-t:#93C5FD;--green-bg:#052E16;--green-t:#86EFAC;
+  --red-bg:#450A0A;--red-t:#FCA5A5;--amber-bg:#451A03;--amber-t:#FCD34D;
+  --purple-bg:#2E1065;--purple-t:#C4B5FD;--teal-bg:#042F2E;--teal-t:#5EEAD4;
+  --coral-bg:#431407;--coral-t:#FDBA74;--pink-bg:#500724;--pink-t:#F9A8D4;
+  --shadow:0 1px 3px rgba(0,0,0,.2);--shadow-md:0 4px 8px rgba(0,0,0,.3);
+}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:2.5rem 2rem}
+
+/* Project Switcher */
+.proj-bar{display:flex;gap:10px;margin-bottom:2rem;overflow-x:auto;padding-bottom:4px}
+.proj-card{flex-shrink:0;padding:14px 22px;border-radius:var(--r-lg);border:2px solid var(--bd);background:var(--bg-card);cursor:pointer;transition:all .2s;min-width:200px;box-shadow:var(--shadow)}
+.proj-card:hover{border-color:var(--bd2);box-shadow:var(--shadow-md)}
+.proj-card.active{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.proj-card .pc-name{font-size:15px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.proj-card .pc-sub{font-size:12px;color:var(--t3)}
+.proj-card .pc-prog{display:flex;align-items:center;gap:10px;margin-top:10px}
+.proj-card .pc-bar{flex:1;height:6px;border-radius:3px;background:var(--bg-s);overflow:hidden}
+.proj-card .pc-fill{height:100%;border-radius:3px;transition:width .4s}
+.proj-card .pc-pct{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.pc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* Header */
+.header{margin-bottom:2rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.header-left h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px}
+.header-left p{font-size:15px;color:var(--t2)}
+.header-badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 14px;border-radius:20px}
+.hb-active{background:var(--green-bg);color:var(--green-t)}
+.hb-active .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Update Bar */
+.update-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding:12px 20px;background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--bd);box-shadow:var(--shadow)}
+.update-info{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t2)}
+.update-info .update-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.update-info .update-dot.live{background:var(--green);animation:pulse 2s infinite}
+.update-info .update-dot.stale{background:var(--amber)}
+.update-info .update-dot.err{background:var(--red)}
+.update-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;font-size:14px;font-weight:600;font-family:var(--font);color:#fff;background:var(--blue);border:none;border-radius:calc(var(--r) - 2px);cursor:pointer;transition:all .2s;white-space:nowrap}
+.update-btn:hover{filter:brightness(1.1);box-shadow:0 2px 8px rgba(59,130,246,.3)}
+.update-btn:active{transform:scale(.97)}
+.update-btn.loading{opacity:.7;pointer-events:none}
+.update-btn .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.update-toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:var(--r);font-size:14px;font-weight:500;z-index:999;box-shadow:var(--shadow-md);transition:all .3s;opacity:0;pointer-events:none}
+.update-toast.show{opacity:1}
+.update-toast.success{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green)}
+.update-toast.error{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red)}
+.update-toast.info{background:var(--blue-bg);color:var(--blue-t);border:1px solid var(--blue)}
+
+/* Date Navigation */
+.date-nav{display:flex;gap:6px;margin-bottom:2rem;padding:4px;background:var(--bg-s);border-radius:var(--r);width:fit-content;overflow-x:auto}
+.date-btn{padding:10px 20px;font-size:14px;font-weight:500;cursor:pointer;border-radius:calc(var(--r) - 2px);border:none;background:transparent;color:var(--t2);transition:all .2s;font-family:var(--font);white-space:nowrap}
+.date-btn:hover{color:var(--t1);background:var(--bg-h)}
+.date-btn.active{background:var(--bg-card);color:var(--t1);font-weight:600;box-shadow:var(--shadow)}
+
+/* Metric Cards */
+.mets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:2rem}
+.mc{background:var(--bg-card);border-radius:var(--r-lg);padding:1.25rem 1.5rem;box-shadow:var(--shadow);border:1px solid var(--bd);position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.mc:nth-child(1)::before{background:var(--blue)}
+.mc:nth-child(2)::before{background:var(--purple)}
+.mc:nth-child(3)::before{background:var(--green)}
+.mc:nth-child(4)::before{background:var(--red)}
+.mc .lb{font-size:13px;color:var(--t2);font-weight:500;margin-bottom:8px;text-transform:uppercase;letter-spacing:.3px}
+.mc .vl{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1.1}
+.mc .df{font-size:12px;margin-top:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px}
+.df.up{color:var(--green-t);background:var(--green-bg)}
+.df.dn{color:var(--red-t);background:var(--red-bg)}
+.df.nt{color:var(--t3);background:var(--bg-s)}
+
+/* Main Tabs */
+.tab-wrap{background:var(--bg-card);border-radius:var(--r-xl);box-shadow:var(--shadow-md);border:1px solid var(--bd);overflow:hidden;margin-bottom:2rem}
+.main-tabs{display:flex;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none}
+.main-tabs::-webkit-scrollbar{display:none}
+.mtab{padding:16px 24px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--t2);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:var(--font)}
+.mtab:hover{color:var(--t1);background:var(--bg-s)}
+.mtab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600;background:transparent}
+.tab-body{padding:2rem}
+.tc{display:none}.tc.active{display:block}
+
+/* Sections */
+.sec{margin-bottom:2.5rem}.sec:last-child{margin-bottom:0}
+.st{font-size:17px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.st-dot{width:4px;height:20px;border-radius:2px;flex-shrink:0}
+
+/* Progress Rows */
+.pr-grid{display:flex;flex-direction:column;gap:2px;background:var(--bg-s);border-radius:var(--r);overflow:hidden}
+.pr{display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--bg-card);transition:background .1s}
+.pr:hover{background:var(--bg-s)}
+.prn{flex:1;min-width:0}.prn .nm{font-size:14px;font-weight:500}.prn .ps{font-size:12px;color:var(--t3);margin-top:2px}
+.prb{width:160px;flex-shrink:0}
+.bar{height:6px;border-radius:3px;background:var(--bg-s);overflow:hidden}
+.bf{height:100%;border-radius:3px;transition:width .5s}
+.pp{width:44px;text-align:right;font-size:14px;font-weight:600;flex-shrink:0;font-variant-numeric:tabular-nums}
+.badge{font-size:12px;padding:4px 12px;border-radius:8px;flex-shrink:0;text-align:center;min-width:68px;font-weight:600}
+.b-done{background:var(--green-bg);color:var(--green-t)}
+.b-prog{background:var(--blue-bg);color:var(--blue-t)}
+.b-rev{background:var(--amber-bg);color:var(--amber-t)}
+.b-todo{background:var(--bg-s);color:var(--t3)}
+.b-blk{background:var(--red-bg);color:var(--red-t)}
+
+/* Story Cards */
+.story-grid{display:flex;flex-direction:column;gap:12px}
+.story{background:var(--bg-card);border-radius:var(--r-lg);padding:1.5rem;border:1px solid var(--bd);transition:border-color .15s,box-shadow .15s}
+.story:hover{border-color:var(--bd2);box-shadow:var(--shadow)}
+.story-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.story-id{font-size:12px;font-weight:700;font-family:var(--mono);color:var(--blue-t);background:var(--blue-bg);padding:3px 10px;border-radius:6px}
+.story-pri{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px}
+.pri-p0{background:var(--red-bg);color:var(--red-t)}
+.pri-p1{background:var(--amber-bg);color:var(--amber-t)}
+.story-title{font-size:16px;font-weight:600;margin-bottom:8px;line-height:1.4}
+.story-desc{font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:12px}
+.story-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.story-foot span{font-size:13px;color:var(--t3)}
+
+/* Commit */
+.commit-head{display:flex;gap:20px;flex-wrap:wrap;padding:16px 20px;background:var(--bg-s);border-radius:var(--r);margin-bottom:20px;font-size:14px;color:var(--t2);align-items:center}
+.commit-head b{font-weight:700;color:var(--t1)}
+.ch-add{color:var(--green-t)}.ch-del{color:var(--red-t)}
+.commit-list{position:relative;padding-left:28px}
+.commit-list::before{content:'';position:absolute;left:13px;top:24px;bottom:24px;width:2px;background:var(--bd);border-radius:1px}
+.commit{position:relative;padding:16px 0;padding-left:28px}
+.c-dot{position:absolute;left:-22px;top:22px;width:14px;height:14px;border-radius:50%;border:3px solid var(--bg-card);box-shadow:0 0 0 2px var(--bd2);z-index:1}
+.c-card{background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--r);padding:16px 20px;transition:border-color .15s,box-shadow .15s}
+.c-card:hover{border-color:var(--bd2);box-shadow:var(--shadow)}
+.c-msg{font-size:15px;font-weight:500;margin-bottom:10px;line-height:1.5;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.c-tag{font-size:11px;padding:3px 10px;border-radius:6px;font-weight:700;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px}
+.c-feat{background:var(--blue-bg);color:var(--blue-t)}
+.c-fix{background:var(--red-bg);color:var(--red-t)}
+.c-refactor{background:var(--purple-bg);color:var(--purple-t)}
+.c-chore{background:var(--bg-s);color:var(--t2)}
+.c-hotfix{background:var(--coral-bg);color:var(--coral-t)}
+.c-perf{background:var(--teal-bg);color:var(--teal-t)}
+.c-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--t2);align-items:center;margin-bottom:10px}
+.c-time{font-family:var(--mono);font-weight:500;font-size:12px;color:var(--t3)}
+.c-hash{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--blue-t);background:var(--blue-bg);padding:2px 8px;border-radius:6px}
+.c-avatar{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.c-author{display:flex;align-items:center;gap:6px;font-weight:500}
+.c-files{display:flex;flex-direction:column;gap:4px;font-size:12px;font-family:var(--mono);padding:10px 14px;background:var(--bg-s);border-radius:8px;margin-top:10px}
+.c-file-row{display:flex;align-items:center;gap:10px}
+.c-fn{color:var(--t2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-fa{color:var(--green-t);font-weight:600;white-space:nowrap}
+.c-fd{color:var(--red-t);font-weight:600;white-space:nowrap}
+
+/* QA Table */
+.qa-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--bd)}
+.qa-table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.qa-table th{text-align:left;padding:12px 16px;font-weight:600;font-size:12px;color:var(--t2);background:var(--bg-s);border-bottom:1px solid var(--bd);text-transform:uppercase;letter-spacing:.3px}
+.qa-table td{padding:12px 16px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.qa-table tbody tr:last-child td{border-bottom:none}
+.qa-table tbody tr:hover td{background:var(--bg-s)}
+.qa-r{font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;white-space:nowrap}
+.qa-pass{background:var(--green-bg);color:var(--green-t)}
+.qa-fail{background:var(--red-bg);color:var(--red-t)}
+.qa-pend{background:var(--amber-bg);color:var(--amber-t)}
+
+.footer{text-align:center;font-size:13px;color:var(--t3);padding:1.5rem 0 1rem;border-top:1px solid var(--bd);margin-top:1rem}
+
+@media(max-width:768px){
+  .wrap{padding:1.25rem 1rem}.header-left h1{font-size:22px}
+  .mets{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mc .vl{font-size:24px}.mc{padding:1rem}
+  .tab-body{padding:1.25rem}.mtab{padding:12px 16px;font-size:13px}
+  .prb{width:100px}.pp{width:38px;font-size:13px}.badge{min-width:56px;font-size:11px;padding:3px 8px}
+  .date-nav{width:100%}.c-files{overflow-x:auto}.story{padding:1rem}
+  .proj-card{min-width:160px;padding:12px 16px}
+}
+@media(max-width:480px){.mets{grid-template-columns:1fr 1fr}.pr{flex-wrap:wrap;gap:8px}.prb{width:100%;order:3}.pp{order:4}}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="max-width:600px;margin:60px auto;padding:40px;text-align:center;font-family:-apple-system,sans-serif;color:#fff;background:#1C1C1A;border-radius:16px;border:1px solid rgba(255,255,255,.1)">
+    <div style="font-size:48px;margin-bottom:16px">&#9888;&#65039;</div>
+    <h2 style="font-size:22px;margin-bottom:12px">需要用瀏覽器開啟</h2>
+    <p style="font-size:16px;line-height:1.6;color:#A1A19A;margin-bottom:20px">
+      這個互動報表需要 JavaScript 才能顯示內容。<br>
+      Telegram / LINE 等 App 的內建預覽無法執行 JavaScript。
+    </p>
+    <div style="background:#232320;border-radius:12px;padding:20px;text-align:left;font-size:15px;line-height:1.8;color:#EDEDEC">
+      <b>手機操作方式：</b><br>
+      1. 點右上角「...」或分享按鈕<br>
+      2. 選擇「在 Safari 中開啟」或「在 Chrome 中開啟」<br><br>
+      <b>電腦操作方式：</b><br>
+      1. 下載檔案到電腦<br>
+      2. 雙擊用瀏覽器開啟
+    </div>
+  </div>
+</noscript>
+<div class="wrap">
+  <div id="projBar" class="proj-bar"></div>
+  <div class="update-bar">
+    <div class="update-info">
+      <span class="update-dot live" id="updateDot"></span>
+      <span id="updateTime">使用內建資料</span>
+    </div>
+    <button class="update-btn" id="updateBtn" onclick="fetchData()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1v5h5"/><path d="M2.5 10A6 6 0 1 0 3.8 4L1 6"/></svg>
+      更新數據
+    </button>
+  </div>
+  <div class="header" id="headerArea"></div>
+  <div class="date-nav" id="dateNav"></div>
+  <div class="mets" id="metCards"></div>
+  <div class="tab-wrap">
+    <div class="main-tabs" id="mainTabs">
+      <button class="mtab active" data-tab="product">產品進度</button>
+      <button class="mtab" data-tab="design">設計部門</button>
+      <button class="mtab" data-tab="frontend">前端開發</button>
+      <button class="mtab" data-tab="backend">後端開發</button>
+      <button class="mtab" data-tab="qa">QA 測試</button>
+      <button class="mtab" data-tab="commits">Commit 記錄</button>
+    </div>
+    <div class="tab-body" id="tabBody"></div>
+  </div>
+  <div class="footer" id="footerArea">Sample Dashboard — 資料皆為範例假資料，僅供展示用途</div>
+  <div class="update-toast" id="toast"></div>
+</div>
+<script>
+/* ============ PROJECT DATA ============ */
+const projects = {
+  usdt: {
+    name: 'USDT 理財平台 H5 活動頁',
+    sub: '全民衝刺季 — 瓜分 100,000 USDT ｜ v1.0 ｜ 預計 5/20 上線',
+    color: 'var(--blue)',
+    dates: [
+      {date:'4/29（三）',key:'0429'},{date:'4/30（四）',key:'0430'},
+      {date:'5/04（一）',key:'0504'},{date:'5/05（二）',key:'0505'},{date:'5/06（三）',key:'0506'},
+    ],
+    daily: {
+      '0429':{ov:58,st:'20/32',qaS:'62/142',bugs:11,bugD:'P0:2 · P1:4 · P2:5',dO:null,dS:null,dQ:null,dB:null,
+        product:[
+          {id:'US-001',t:'活動首頁 Landing Page',d:'身為用戶，我希望進入活動頁時能看到 Hero Banner、活動倒數計時、VIP 等級進度條和三個活動入口卡片，讓我快速了解活動內容並選擇參與。',ac:5,pri:'P0',s:'done'},
+          {id:'US-002',t:'社群報銷 — 進度追蹤與申請',d:'身為推廣者，我希望能查看三項達標條件（業績 ≥ 5,000 USDT、用戶 ≥ 10 人、舉辦活動）的即時進度，達標後上傳素材提交報銷申請。',ac:8,pri:'P0',s:'prog'},
+          {id:'US-003',t:'VIP 級別挑戰賽',d:'系統自動偵測 VIP 等級，顯示可挑戰目標（+3 級），報名後即時看到升級進度和獎勵釋放（分 3 期）狀態。',ac:6,pri:'P0',s:'todo'},
+          {id:'US-004',t:'每日排行榜',d:'查看今日/昨日/本週排行榜（每 5 分鐘更新），含 Top 3 獎台和我的排名。',ac:7,pri:'P0',s:'prog'},
+          {id:'US-005',t:'風控引擎',d:'自動偵測設備指紋重複、同 IP 註冊、KYC 重複、閉環交易，分 4 級處理。',ac:10,pri:'P0',s:'todo'},
+          {id:'US-006',t:'獎勵發放系統',d:'排行榜 T+1 自動發放，報銷人工審核，VIP 獎勵分 3 期釋放，冪等保護。',ac:9,pri:'P1',s:'todo'},
+        ],
+        ms:[{n:'PRD 撰寫與評審',p:100,s:'done'},{n:'交互原型確認',p:95,s:'rev'},{n:'技術方案評審',p:70,s:'prog'},{n:'驗收測試',p:10,s:'todo'}],
+        design:[{n:'Hero Banner + 主視覺',o:'Kevin',p:100,s:'done'},{n:'VIP 等級條 + 卡片',o:'Kevin',p:90,s:'prog'},{n:'報銷進度卡 + 狀態流',o:'Amy',p:85,s:'prog'},{n:'素材上傳介面',o:'Amy',p:40,s:'prog'},{n:'排行榜 Top3 獎台',o:'Amy',p:70,s:'prog'},{n:'規則彈窗 + 倒數',o:'Kevin',p:80,s:'prog'},{n:'CTA 吸底按鈕',o:'Kevin',p:20,s:'todo'}],
+        fe:[{n:'架構 + 路由 + 元件庫',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'Landing Page',o:'Jack',p:85,s:'prog',sp:'Sprint 1'},{n:'社群報銷頁面',o:'Jack',p:40,s:'prog',sp:'Sprint 2'},{n:'素材上傳元件',o:'Tina',p:10,s:'todo',sp:'Sprint 2'},{n:'VIP 挑戰賽頁面',o:'Jack',p:30,s:'prog',sp:'Sprint 2'},{n:'排行榜 + Polling',o:'Tina',p:50,s:'prog',sp:'Sprint 2'}],
+        be:[{n:'DB Schema + 索引',o:'Eric',p:100,s:'done'},{n:'用戶 API',o:'Eric',p:90,s:'prog'},{n:'排行榜定時任務',o:'Tom',p:50,s:'prog'},{n:'報銷 API',o:'Tom',p:25,s:'prog'},{n:'風控微服務',o:'Tom',p:15,s:'todo'},{n:'獎勵發放排程',o:'Eric',p:0,s:'todo'}],
+        qaT:[{sec:'活動首頁',items:[{id:'TC-001',n:'Hero Banner',d:'主視覺+文案正確',r:'pass'},{id:'TC-002',n:'倒數計時',d:'伺服器同步 ≤2s',r:'pass'},{id:'TC-003',n:'VIP 等級條',d:'等級+進度正確',r:'pass'},{id:'TC-004',n:'入口卡片',d:'跳轉+內容正確',r:'pend'}]},{sec:'社群報銷',items:[{id:'TC-010',n:'達標條件',d:'三項獨立進度',r:'pass'},{id:'TC-011',n:'CTA 置灰',d:'未達標置灰',r:'pend'}]},{sec:'排行榜',items:[{id:'TC-020',n:'5min 刷新',d:'排名更新+倒數',r:'pass'},{id:'TC-021',n:'Tab 切換',d:'三榜獨立',r:'pass'}]}],
+        commits:[{t:'21:34',h:'a3f8e21',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'建立 5 張核心資料表 schema + 索引',f:[{n:'migrations/001_init_schema.sql',a:248,d:0},{n:'migrations/002_indexes.sql',a:42,d:0}]},{t:'19:12',h:'b7c4d09',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'初始化 React + Vite，配置 TailwindCSS + 路由',f:[{n:'package.json',a:45,d:0},{n:'vite.config.ts',a:28,d:0},{n:'src/router/index.tsx',a:67,d:0}]}]
+      },
+      '0430':{ov:60,st:'21/32',qaS:'67/142',bugs:10,bugD:'P0:2 · P1:3 · P2:5',dO:'+2%',dS:'+1',dQ:'+5',dB:'-1',
+        product:[{id:'US-001',t:'活動首頁',d:'全部完成。',ac:5,pri:'P0',s:'done'},{id:'US-002',t:'社群報銷',d:'達標條件+素材上傳進行中。',ac:8,pri:'P0',s:'prog'},{id:'US-003',t:'VIP 挑戰賽',d:'開始開發。',ac:6,pri:'P0',s:'prog'},{id:'US-004',t:'每日排行榜',d:'進行中。',ac:7,pri:'P0',s:'prog'},{id:'US-005',t:'風控引擎',d:'尚未開始。',ac:10,pri:'P0',s:'todo'},{id:'US-006',t:'獎勵發放',d:'尚未開始。',ac:9,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD 撰寫與評審',p:100,s:'done'},{n:'交互原型確認',p:100,s:'done'},{n:'技術方案評審',p:75,s:'prog'},{n:'驗收測試',p:12,s:'todo'}],
+        design:[{n:'Hero Banner',o:'Kevin',p:100,s:'done'},{n:'VIP 等級條+卡片',o:'Kevin',p:100,s:'done'},{n:'報銷進度卡',o:'Amy',p:90,s:'prog'},{n:'素材上傳介面',o:'Amy',p:50,s:'prog'},{n:'排行榜 Top3',o:'Amy',p:80,s:'prog'},{n:'規則彈窗',o:'Kevin',p:85,s:'prog'},{n:'CTA 吸底',o:'Kevin',p:30,s:'prog'}],
+        fe:[{n:'架構+路由+元件庫',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'Landing Page',o:'Tina',p:92,s:'prog',sp:'Sprint 1'},{n:'社群報銷',o:'Jack',p:45,s:'prog',sp:'Sprint 2'},{n:'素材上傳',o:'Tina',p:15,s:'prog',sp:'Sprint 2'},{n:'VIP 挑戰賽',o:'Jack',p:35,s:'prog',sp:'Sprint 2'},{n:'排行榜+Polling',o:'Tina',p:55,s:'prog',sp:'Sprint 2'}],
+        be:[{n:'DB Schema+索引',o:'Eric',p:100,s:'done'},{n:'用戶 API',o:'Eric',p:95,s:'rev'},{n:'排行榜定時任務',o:'Tom',p:55,s:'prog'},{n:'報銷 API',o:'Tom',p:30,s:'prog'},{n:'風控微服務',o:'Tom',p:18,s:'prog'},{n:'獎勵發放',o:'Eric',p:0,s:'todo'}],
+        qaT:[{sec:'活動首頁',items:[{id:'TC-001',n:'Hero Banner',d:'主視覺+文案',r:'pass'},{id:'TC-002',n:'倒數計時',d:'同步≤2s',r:'pass'},{id:'TC-004',n:'入口卡片',d:'跳轉正確',r:'pass'},{id:'TC-005',n:'社群數據',d:'千分位+更新',r:'fail'}]},{sec:'報銷',items:[{id:'TC-010',n:'達標條件',d:'三項進度',r:'pass'},{id:'TC-012',n:'影片上傳',d:'200MB mp4/mov',r:'pend'}]},{sec:'排行榜',items:[{id:'TC-020',n:'5min刷新',d:'排名更新',r:'pass'},{id:'TC-021',n:'Tab切換',d:'三榜獨立',r:'pass'},{id:'TC-026',n:'設備指紋',d:'同指紋首帳號',r:'pass'}]}],
+        commits:[{t:'22:05',h:'d4a9b12',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'用戶 VIP 等級查詢 + 團隊業績 API',f:[{n:'src/api/user/vip.controller.ts',a:124,d:0},{n:'src/api/user/performance.service.ts',a:187,d:0}]},{t:'18:30',h:'e5b7c33',a:'Tina Wu',av:'TW',c:'var(--pink)',tp:'feat',m:'Landing Page — Hero Banner + 倒數計時',f:[{n:'src/pages/Landing/HeroBanner.tsx',a:156,d:0},{n:'src/components/Countdown.tsx',a:98,d:0}]}]
+      },
+      '0504':{ov:63,st:'22/32',qaS:'74/142',bugs:9,bugD:'P0:1 · P1:4 · P2:4',dO:'+3%',dS:'+1',dQ:'+7',dB:'-1',
+        product:[{id:'US-001',t:'活動首頁',d:'完成。',ac:5,pri:'P0',s:'done'},{id:'US-002',t:'社群報銷',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'US-003',t:'VIP 挑戰賽',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'US-004',t:'每日排行榜',d:'待驗收。',ac:7,pri:'P0',s:'rev'},{id:'US-005',t:'風控引擎',d:'開發中。',ac:10,pri:'P0',s:'prog'},{id:'US-006',t:'獎勵發放',d:'未開始。',ac:9,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'原型確認',p:100,s:'done'},{n:'技術方案',p:80,s:'prog'},{n:'驗收',p:18,s:'todo'}],
+        design:[{n:'Hero Banner',o:'Kevin',p:100,s:'done'},{n:'VIP+卡片',o:'Kevin',p:100,s:'done'},{n:'報銷進度卡',o:'Amy',p:100,s:'done'},{n:'素材上傳',o:'Amy',p:60,s:'prog'},{n:'排行榜Top3',o:'Amy',p:90,s:'rev'},{n:'規則彈窗',o:'Kevin',p:95,s:'rev'},{n:'CTA吸底',o:'Kevin',p:40,s:'prog'}],
+        fe:[{n:'架構+元件庫',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'Landing Page',o:'Tina',p:100,s:'done',sp:'Sprint 1'},{n:'社群報銷',o:'Jack',p:55,s:'prog',sp:'Sprint 2'},{n:'素材上傳',o:'Tina',p:25,s:'prog',sp:'Sprint 2'},{n:'VIP挑戰賽',o:'Jack',p:42,s:'prog',sp:'Sprint 2'},{n:'排行榜+Polling',o:'Tina',p:65,s:'prog',sp:'Sprint 2'}],
+        be:[{n:'DB Schema',o:'Eric',p:100,s:'done'},{n:'用戶API',o:'Eric',p:100,s:'done'},{n:'排行榜任務',o:'Tom',p:65,s:'prog'},{n:'報銷API',o:'Tom',p:38,s:'prog'},{n:'風控微服務',o:'Tom',p:25,s:'prog'},{n:'獎勵發放',o:'Eric',p:5,s:'todo'}],
+        qaT:[{sec:'首頁',items:[{id:'TC-001',n:'Banner',d:'正確',r:'pass'},{id:'TC-002',n:'倒數',d:'同步',r:'pass'},{id:'TC-005',n:'社群數據',d:'千分位',r:'fail'}]},{sec:'報銷',items:[{id:'TC-010',n:'達標條件',d:'三項進度',r:'pass'},{id:'TC-012',n:'影片上傳',d:'200MB',r:'fail'},{id:'TC-013',n:'照片Grid',d:'≥3張',r:'pass'}]},{sec:'排行榜+風控',items:[{id:'TC-020',n:'5min刷新',d:'更新',r:'pass'},{id:'TC-024',n:'同分處理',d:'4優先級',r:'fail'},{id:'TC-026',n:'設備指紋',d:'首帳號',r:'pass'},{id:'TC-027',n:'IP限制',d:'24h≥3',r:'pass'}]}],
+        commits:[{t:'23:15',h:'a8d2e55',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'排行榜 SQL 聚合定時任務',f:[{n:'src/jobs/ranking-aggregator.ts',a:213,d:0},{n:'src/services/ranking.service.ts',a:178,d:0}]},{t:'20:40',h:'b1f3a66',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'Landing Page — 入口卡片 ×3 + 社群數據',f:[{n:'src/pages/Landing/ActivityCards.tsx',a:134,d:12},{n:'src/pages/Landing/SocialProof.tsx',a:56,d:0}]},{t:'17:55',h:'c9e4b77',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'fix',m:'修復 VIP0 用戶回傳 null',f:[{n:'src/api/user/vip.controller.ts',a:8,d:3}]},{t:'11:30',h:'e3a6d99',a:'Tina Wu',av:'TW',c:'var(--pink)',tp:'refactor',m:'抽取 useVipProgress hook',f:[{n:'src/hooks/useVipProgress.ts',a:67,d:0},{n:'src/pages/Landing/VipBar.tsx',a:23,d:45}]}]
+      },
+      '0505':{ov:66,st:'23/32',qaS:'80/142',bugs:8,bugD:'P0:1 · P1:3 · P2:4',dO:'+3%',dS:'+1',dQ:'+6',dB:'-1',
+        product:[{id:'US-001',t:'活動首頁',d:'完成。',ac:5,pri:'P0',s:'done'},{id:'US-002',t:'社群報銷',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'US-003',t:'VIP挑戰賽',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'US-004',t:'排行榜',d:'待驗收。',ac:7,pri:'P0',s:'rev'},{id:'US-005',t:'風控引擎',d:'開發中。',ac:10,pri:'P0',s:'prog'},{id:'US-006',t:'獎勵發放',d:'未開始。',ac:9,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'原型確認',p:100,s:'done'},{n:'技術方案',p:82,s:'prog'},{n:'驗收',p:25,s:'prog'}],
+        design:[{n:'Hero Banner',o:'Kevin',p:100,s:'done'},{n:'VIP+卡片',o:'Kevin',p:100,s:'done'},{n:'報銷進度卡',o:'Amy',p:100,s:'done'},{n:'素材上傳',o:'Amy',p:72,s:'prog'},{n:'排行榜Top3',o:'Amy',p:100,s:'done'},{n:'規則彈窗',o:'Kevin',p:100,s:'done'},{n:'CTA吸底',o:'Kevin',p:50,s:'prog'}],
+        fe:[{n:'架構+元件庫',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'Landing Page',o:'Tina',p:100,s:'done',sp:'Sprint 1'},{n:'社群報銷',o:'Jack',p:65,s:'prog',sp:'Sprint 2'},{n:'素材上傳',o:'Tina',p:35,s:'blk',sp:'Sprint 2'},{n:'VIP挑戰賽',o:'Jack',p:50,s:'prog',sp:'Sprint 2'},{n:'排行榜',o:'Tina',p:80,s:'prog',sp:'Sprint 2'}],
+        be:[{n:'DB Schema',o:'Eric',p:100,s:'done'},{n:'用戶API',o:'Eric',p:100,s:'done'},{n:'排行榜任務',o:'Tom',p:78,s:'rev'},{n:'報銷API',o:'Tom',p:48,s:'prog'},{n:'風控微服務',o:'Tom',p:32,s:'prog'},{n:'獎勵發放',o:'Eric',p:12,s:'prog'}],
+        qaT:[{sec:'首頁',items:[{id:'TC-001',n:'Banner',d:'正確',r:'pass'},{id:'TC-005',n:'社群數據',d:'千分位',r:'fail'}]},{sec:'報銷',items:[{id:'TC-010',n:'達標條件',d:'三項進度',r:'pass'},{id:'TC-012',n:'影片上傳',d:'200MB',r:'fail'},{id:'TC-014',n:'狀態流',d:'正確切換',r:'pass'}]},{sec:'排行榜+風控',items:[{id:'TC-020',n:'5min刷新',d:'更新',r:'pass'},{id:'TC-022',n:'Top3獎台',d:'正確',r:'pass'},{id:'TC-024',n:'同分處理',d:'4優先級',r:'fail'},{id:'TC-026',n:'設備指紋',d:'首帳號',r:'pass'},{id:'TC-027',n:'IP限制',d:'24h≥3',r:'pass'}]},{sec:'VIP挑戰',items:[{id:'TC-040',n:'VIP偵測',d:'等級正確',r:'pass'},{id:'TC-042',n:'3期釋放',d:'40/30/30',r:'pend'}]}],
+        commits:[{t:'22:50',h:'f4b7e10',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'社群報銷 — 進度卡 + 綜合進度條',f:[{n:'src/pages/Reimbursement/ProgressCard.tsx',a:178,d:0}]},{t:'19:30',h:'b6d9a32',a:'Tina Wu',av:'TW',c:'var(--pink)',tp:'feat',m:'排行榜 Top3 獎台 + 列表 + Tab',f:[{n:'src/pages/Ranking/Podium.tsx',a:167,d:0},{n:'src/pages/Ranking/RankList.tsx',a:134,d:0}]},{t:'16:45',h:'c7e1b43',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'perf',m:'排行榜 SQL 優化 2.3s → 180ms',f:[{n:'migrations/003_composite_idx.sql',a:12,d:0}]},{t:'14:20',h:'d8f2c54',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'fix',m:'同分 VIP 排序邏輯修復',f:[{n:'src/services/ranking.service.ts',a:4,d:4},{n:'tests/ranking/tiebreaker.test.ts',a:48,d:12}]}]
+      },
+      '0506':{ov:68,st:'24/32',qaS:'87/142',bugs:7,bugD:'P0:1 · P1:3 · P2:3',dO:'+2%',dS:'+1',dQ:'+7',dB:'-1',
+        product:[{id:'US-001',t:'活動首頁',d:'完成。',ac:5,pri:'P0',s:'done'},{id:'US-002',t:'社群報銷',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'US-003',t:'VIP挑戰賽',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'US-004',t:'排行榜',d:'待驗收。',ac:7,pri:'P0',s:'rev'},{id:'US-005',t:'風控引擎',d:'開發中。',ac:10,pri:'P0',s:'prog'},{id:'US-006',t:'獎勵發放',d:'未開始。',ac:9,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'原型確認',p:100,s:'done'},{n:'技術方案',p:85,s:'prog'},{n:'驗收',p:30,s:'rev'}],
+        design:[{n:'Hero Banner',o:'Kevin',p:100,s:'done'},{n:'VIP+卡片',o:'Kevin',p:100,s:'done'},{n:'報銷進度卡',o:'Amy',p:100,s:'done'},{n:'素材上傳',o:'Amy',p:80,s:'prog'},{n:'排行榜Top3',o:'Amy',p:100,s:'done'},{n:'規則彈窗',o:'Kevin',p:100,s:'done'},{n:'CTA吸底',o:'Kevin',p:60,s:'prog'},{n:'審核後台',o:'Amy',p:20,s:'todo'}],
+        fe:[{n:'架構+元件庫',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'Landing Page',o:'Tina',p:100,s:'done',sp:'Sprint 1'},{n:'社群報銷',o:'Jack',p:75,s:'prog',sp:'Sprint 2'},{n:'素材上傳',o:'Tina',p:40,s:'blk',sp:'Sprint 2'},{n:'VIP挑戰賽',o:'Jack',p:60,s:'prog',sp:'Sprint 2'},{n:'排行榜+Polling',o:'Tina',p:90,s:'prog',sp:'Sprint 2'},{n:'規則彈窗+CTA',o:'Tina',p:0,s:'todo',sp:'Sprint 3'},{n:'審核後台',o:'Jack',p:0,s:'todo',sp:'Sprint 3'}],
+        be:[{n:'DB Schema',o:'Eric',p:100,s:'done'},{n:'用戶API',o:'Eric',p:100,s:'done'},{n:'排行榜定時任務',o:'Tom',p:85,s:'rev'},{n:'排行榜快照23:59',o:'Tom',p:70,s:'prog'},{n:'報銷API+上傳',o:'Tom',p:55,s:'prog'},{n:'VIP挑戰賽API',o:'Eric',p:65,s:'prog'},{n:'風控微服務',o:'Tom',p:40,s:'prog'},{n:'獎勵發放排程',o:'Eric',p:20,s:'todo'}],
+        qaT:[{sec:'活動首頁',items:[{id:'TC-001',n:'Hero Banner',d:'主視覺+文案',r:'pass'},{id:'TC-002',n:'倒數計時',d:'同步≤2s',r:'pass'},{id:'TC-003',n:'VIP等級條',d:'進度正確',r:'pass'},{id:'TC-005',n:'社群數據',d:'千分位+更新',r:'fail'},{id:'TC-006',n:'CTA吸底',d:'固定+文案切換',r:'pend'}]},{sec:'社群報銷',items:[{id:'TC-010',n:'達標條件',d:'三項進度',r:'pass'},{id:'TC-011',n:'CTA置灰',d:'未達標置灰',r:'pass'},{id:'TC-012',n:'影片上傳',d:'200MB mp4/mov',r:'fail'},{id:'TC-013',n:'照片Grid',d:'≥3張',r:'pass'},{id:'TC-014',n:'5步狀態流',d:'狀態切換',r:'pass'},{id:'TC-015',n:'退回補件',d:'限1次',r:'pend'}]},{sec:'排行榜+風控',items:[{id:'TC-020',n:'5min刷新',d:'更新+倒數',r:'pass'},{id:'TC-022',n:'Top3獎台',d:'頭像+暱稱',r:'pass'},{id:'TC-024',n:'同分處理',d:'4優先級',r:'fail'},{id:'TC-025',n:'異常波動',d:'≥500%凍結',r:'pend'},{id:'TC-026',n:'設備指紋',d:'同指紋首帳號',r:'pass'},{id:'TC-028',n:'閉環交易',d:'A→B→C→A',r:'pend'},{id:'TC-030',n:'23:59快照',d:'鎖定+T+1發放',r:'pass'}]},{sec:'VIP挑戰賽',items:[{id:'TC-040',n:'VIP偵測',d:'等級正確',r:'pass'},{id:'TC-041',n:'報名資格',d:'≥VIP1',r:'pass'},{id:'TC-042',n:'3期釋放',d:'40/30/30',r:'pend'},{id:'TC-044',n:'鎖倉條件',d:'下滑30%暫停',r:'pend'}]}],
+        commits:[{t:'23:10',h:'f1a4e76',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'VIP 挑戰賽 — 報名 API + 獎勵分 3 期',f:[{n:'src/api/challenge/enroll.controller.ts',a:145,d:0},{n:'src/api/challenge/reward-release.service.ts',a:198,d:0}]},{t:'21:40',h:'a2b5f87',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'VIP 挑戰賽 — 挑戰卡 + 差距分析',f:[{n:'src/pages/Challenge/ChallengeCard.tsx',a:189,d:0},{n:'src/pages/Challenge/GapAnalysis.tsx',a:112,d:0}]},{t:'20:15',h:'b3c6a98',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'風控 — 設備指紋去重 + IP 限制',f:[{n:'src/services/risk/device-fingerprint.ts',a:134,d:0},{n:'src/services/risk/ip-limiter.ts',a:98,d:0}]},{t:'18:30',h:'c4d7b09',a:'Tina Wu',av:'TW',c:'var(--pink)',tp:'feat',m:'排行榜 Polling 5 分鐘 + Server Time Sync',f:[{n:'src/pages/Ranking/usePolling.ts',a:78,d:0}]},{t:'16:50',h:'d5e8c10',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'fix',m:'快照鎖定後仍可覆蓋 — 加 is_locked',f:[{n:'src/jobs/ranking-snapshot.ts',a:23,d:7}]},{t:'11:05',h:'f7a1e32',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'hotfix',m:'排行榜門檻 1,000 用 >= 而非 >',f:[{n:'src/services/ranking.service.ts',a:2,d:2},{n:'tests/ranking/threshold.test.ts',a:18,d:0}]}]
+      }
+    }
+  },
+  cex: {
+    name: 'CEX 中心化錢包',
+    sub: '合約交易 + 資產管理 ｜ v2.3 ｜ 預計 6/01 上線',
+    color: 'var(--teal)',
+    dates: [
+      {date:'4/29（三）',key:'0429'},{date:'4/30（四）',key:'0430'},
+      {date:'5/04（一）',key:'0504'},{date:'5/05（二）',key:'0505'},{date:'5/06（三）',key:'0506'},
+    ],
+    daily: {
+      '0429':{ov:42,st:'12/28',qaS:'34/98',bugs:14,bugD:'P0:3 · P1:5 · P2:6',dO:null,dS:null,dQ:null,dB:null,
+        product:[{id:'CX-001',t:'資產總覽頁',d:'用戶查看各幣種餘額、總資產估值（USDT）、24h 漲跌。',ac:4,pri:'P0',s:'done'},{id:'CX-002',t:'合約開倉流程',d:'選擇交易對、設定槓桿倍數、輸入保證金、選擇多/空方向下單。',ac:8,pri:'P0',s:'prog'},{id:'CX-003',t:'止盈止損設定',d:'開倉時或持倉中設定 TP/SL，觸發後自動平倉。',ac:6,pri:'P0',s:'prog'},{id:'CX-004',t:'充提幣流程',d:'充值地址生成 + 提幣審核 + 手續費計算。',ac:7,pri:'P0',s:'todo'},{id:'CX-005',t:'K 線圖表',d:'TradingView 整合，支援多時間週期切換。',ac:5,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD 評審',p:100,s:'done'},{n:'API 設計',p:80,s:'prog'},{n:'安全審計',p:30,s:'prog'},{n:'壓力測試',p:0,s:'todo'}],
+        design:[{n:'資產頁 UI',o:'Kevin',p:100,s:'done'},{n:'合約交易介面',o:'Amy',p:70,s:'prog'},{n:'充提幣流程',o:'Kevin',p:40,s:'prog'},{n:'K 線整合',o:'Amy',p:20,s:'todo'}],
+        fe:[{n:'資產總覽頁',o:'Jack',p:80,s:'prog',sp:'Sprint 1'},{n:'合約下單表單',o:'Tina',p:45,s:'prog',sp:'Sprint 2'},{n:'TradingView 整合',o:'Jack',p:30,s:'prog',sp:'Sprint 2'},{n:'充提幣頁面',o:'Tina',p:10,s:'todo',sp:'Sprint 3'}],
+        be:[{n:'錢包地址生成 API',o:'Eric',p:100,s:'done'},{n:'合約引擎核心',o:'Tom',p:50,s:'prog'},{n:'風險控制模組',o:'Eric',p:35,s:'prog'},{n:'提幣審核流程',o:'Tom',p:15,s:'todo'}],
+        qaT:[{sec:'資產頁',items:[{id:'CX-TC-01',n:'餘額顯示',d:'各幣種正確',r:'pass'},{id:'CX-TC-02',n:'總資產估值',d:'USDT 換算',r:'pass'},{id:'CX-TC-03',n:'24h 漲跌',d:'百分比正確',r:'pend'}]},{sec:'合約交易',items:[{id:'CX-TC-10',n:'槓桿設定',d:'1-125x',r:'pass'},{id:'CX-TC-11',n:'保證金計算',d:'公式正確',r:'fail'},{id:'CX-TC-12',n:'多空下單',d:'方向正確',r:'pend'}]}],
+        commits:[{t:'20:30',h:'x1a2b3c',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'錢包地址生成 — 支援 BTC / ETH / USDT-TRC20',f:[{n:'src/wallet/address-gen.ts',a:189,d:0}]},{t:'16:00',h:'x4d5e6f',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'合約引擎 — 開倉邏輯 + 保證金凍結',f:[{n:'src/contract/engine.ts',a:312,d:0},{n:'src/contract/margin.ts',a:145,d:0}]}]
+      },
+      '0430':{ov:44,st:'13/28',qaS:'38/98',bugs:13,bugD:'P0:3 · P1:4 · P2:6',dO:'+2%',dS:'+1',dQ:'+4',dB:'-1',
+        product:[{id:'CX-001',t:'資產總覽頁',d:'完成。',ac:4,pri:'P0',s:'done'},{id:'CX-002',t:'合約開倉',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'CX-003',t:'止盈止損',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'CX-004',t:'充提幣',d:'未開始。',ac:7,pri:'P0',s:'todo'},{id:'CX-005',t:'K線圖表',d:'未開始。',ac:5,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'API設計',p:85,s:'prog'},{n:'安全審計',p:32,s:'prog'},{n:'壓力測試',p:0,s:'todo'}],
+        design:[{n:'資產頁',o:'Kevin',p:100,s:'done'},{n:'合約交易',o:'Amy',p:75,s:'prog'},{n:'充提幣',o:'Kevin',p:45,s:'prog'},{n:'K線',o:'Amy',p:25,s:'prog'}],
+        fe:[{n:'資產總覽',o:'Jack',p:85,s:'prog',sp:'Sprint 1'},{n:'合約下單',o:'Tina',p:48,s:'prog',sp:'Sprint 2'},{n:'TradingView',o:'Jack',p:35,s:'prog',sp:'Sprint 2'},{n:'充提幣',o:'Tina',p:12,s:'todo',sp:'Sprint 3'}],
+        be:[{n:'錢包地址API',o:'Eric',p:100,s:'done'},{n:'合約引擎',o:'Tom',p:55,s:'prog'},{n:'風控模組',o:'Eric',p:38,s:'prog'},{n:'提幣審核',o:'Tom',p:18,s:'prog'}],
+        qaT:[{sec:'資產頁',items:[{id:'CX-TC-01',n:'餘額',d:'正確',r:'pass'},{id:'CX-TC-02',n:'估值',d:'USDT',r:'pass'},{id:'CX-TC-03',n:'漲跌',d:'百分比',r:'pass'}]},{sec:'合約',items:[{id:'CX-TC-10',n:'槓桿',d:'1-125x',r:'pass'},{id:'CX-TC-11',n:'保證金',d:'公式',r:'fail'},{id:'CX-TC-12',n:'多空',d:'方向',r:'pend'},{id:'CX-TC-13',n:'強平線',d:'計算正確',r:'pend'}]}],
+        commits:[{t:'21:00',h:'x7g8h9i',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'合約引擎 — 止盈止損觸發邏輯',f:[{n:'src/contract/tp-sl.ts',a:178,d:0}]},{t:'17:30',h:'xj0k1l2',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'fix',m:'保證金計算精度問題 — 使用 Decimal.js',f:[{n:'src/contract/margin.ts',a:24,d:15},{n:'package.json',a:1,d:0}]}]
+      },
+      '0504':{ov:47,st:'14/28',qaS:'42/98',bugs:12,bugD:'P0:2 · P1:4 · P2:6',dO:'+3%',dS:'+1',dQ:'+4',dB:'-1',
+        product:[{id:'CX-001',t:'資產總覽',d:'完成。',ac:4,pri:'P0',s:'done'},{id:'CX-002',t:'合約開倉',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'CX-003',t:'止盈止損',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'CX-004',t:'充提幣',d:'開始規劃。',ac:7,pri:'P0',s:'prog'},{id:'CX-005',t:'K線',d:'未開始。',ac:5,pri:'P1',s:'todo'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'API設計',p:90,s:'rev'},{n:'安全審計',p:35,s:'prog'},{n:'壓力測試',p:5,s:'todo'}],
+        design:[{n:'資產頁',o:'Kevin',p:100,s:'done'},{n:'合約交易',o:'Amy',p:85,s:'prog'},{n:'充提幣',o:'Kevin',p:55,s:'prog'},{n:'K線',o:'Amy',p:30,s:'prog'}],
+        fe:[{n:'資產總覽',o:'Jack',p:90,s:'prog',sp:'Sprint 1'},{n:'合約下單',o:'Tina',p:55,s:'prog',sp:'Sprint 2'},{n:'TradingView',o:'Jack',p:40,s:'prog',sp:'Sprint 2'},{n:'充提幣',o:'Tina',p:15,s:'prog',sp:'Sprint 3'}],
+        be:[{n:'錢包地址API',o:'Eric',p:100,s:'done'},{n:'合約引擎',o:'Tom',p:62,s:'prog'},{n:'風控模組',o:'Eric',p:42,s:'prog'},{n:'提幣審核',o:'Tom',p:22,s:'prog'}],
+        qaT:[{sec:'資產頁',items:[{id:'CX-TC-01',n:'餘額',d:'正確',r:'pass'},{id:'CX-TC-02',n:'估值',d:'USDT',r:'pass'},{id:'CX-TC-03',n:'漲跌',d:'百分比',r:'pass'}]},{sec:'合約',items:[{id:'CX-TC-10',n:'槓桿',d:'1-125x',r:'pass'},{id:'CX-TC-11',n:'保證金',d:'Decimal.js',r:'pass'},{id:'CX-TC-12',n:'多空',d:'方向',r:'pass'},{id:'CX-TC-13',n:'強平線',d:'計算',r:'fail'}]}],
+        commits:[{t:'22:00',h:'xm3n4o5',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'資產總覽頁完成 — 多幣種切換 + 估值圖表',f:[{n:'src/pages/Assets/Overview.tsx',a:234,d:12}]},{t:'18:45',h:'xp6q7r8',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'合約引擎 — 強制平倉邏輯 + 通知',f:[{n:'src/contract/liquidation.ts',a:156,d:0}]}]
+      },
+      '0505':{ov:50,st:'15/28',qaS:'48/98',bugs:11,bugD:'P0:2 · P1:4 · P2:5',dO:'+3%',dS:'+1',dQ:'+6',dB:'-1',
+        product:[{id:'CX-001',t:'資產總覽',d:'完成。',ac:4,pri:'P0',s:'done'},{id:'CX-002',t:'合約開倉',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'CX-003',t:'止盈止損',d:'待驗收。',ac:6,pri:'P0',s:'rev'},{id:'CX-004',t:'充提幣',d:'開發中。',ac:7,pri:'P0',s:'prog'},{id:'CX-005',t:'K線',d:'開發中。',ac:5,pri:'P1',s:'prog'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'API設計',p:95,s:'rev'},{n:'安全審計',p:40,s:'prog'},{n:'壓力測試',p:8,s:'todo'}],
+        design:[{n:'資產頁',o:'Kevin',p:100,s:'done'},{n:'合約交易',o:'Amy',p:95,s:'rev'},{n:'充提幣',o:'Kevin',p:65,s:'prog'},{n:'K線',o:'Amy',p:40,s:'prog'}],
+        fe:[{n:'資產總覽',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'合約下單',o:'Tina',p:65,s:'prog',sp:'Sprint 2'},{n:'TradingView',o:'Jack',p:50,s:'prog',sp:'Sprint 2'},{n:'充提幣',o:'Tina',p:25,s:'prog',sp:'Sprint 3'}],
+        be:[{n:'錢包API',o:'Eric',p:100,s:'done'},{n:'合約引擎',o:'Tom',p:72,s:'prog'},{n:'風控模組',o:'Eric',p:50,s:'prog'},{n:'提幣審核',o:'Tom',p:30,s:'prog'}],
+        qaT:[{sec:'資產頁',items:[{id:'CX-TC-01',n:'餘額',d:'正確',r:'pass'},{id:'CX-TC-02',n:'估值',d:'USDT',r:'pass'}]},{sec:'合約',items:[{id:'CX-TC-10',n:'槓桿',d:'1-125x',r:'pass'},{id:'CX-TC-11',n:'保證金',d:'精度',r:'pass'},{id:'CX-TC-12',n:'多空',d:'方向',r:'pass'},{id:'CX-TC-13',n:'強平線',d:'計算',r:'pass'},{id:'CX-TC-14',n:'止盈止損',d:'觸發邏輯',r:'pend'}]}],
+        commits:[{t:'21:30',h:'xs9t0u1',a:'Tina Wu',av:'TW',c:'var(--pink)',tp:'feat',m:'合約下單表單 — 槓桿滑桿 + 保證金即時計算',f:[{n:'src/pages/Trade/OrderForm.tsx',a:267,d:0}]},{t:'15:00',h:'xv2w3x4',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'風控模組 — 異常大額偵測 + 自動凍結',f:[{n:'src/risk/large-order.ts',a:134,d:0}]}]
+      },
+      '0506':{ov:53,st:'16/28',qaS:'54/98',bugs:10,bugD:'P0:1 · P1:4 · P2:5',dO:'+3%',dS:'+1',dQ:'+6',dB:'-1',
+        product:[{id:'CX-001',t:'資產總覽',d:'完成。',ac:4,pri:'P0',s:'done'},{id:'CX-002',t:'合約開倉',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'CX-003',t:'止盈止損',d:'待驗收。',ac:6,pri:'P0',s:'rev'},{id:'CX-004',t:'充提幣',d:'開發中。',ac:7,pri:'P0',s:'prog'},{id:'CX-005',t:'K線',d:'開發中。',ac:5,pri:'P1',s:'prog'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'API設計',p:100,s:'done'},{n:'安全審計',p:45,s:'prog'},{n:'壓力測試',p:10,s:'prog'}],
+        design:[{n:'資產頁',o:'Kevin',p:100,s:'done'},{n:'合約交易',o:'Amy',p:100,s:'done'},{n:'充提幣',o:'Kevin',p:72,s:'prog'},{n:'K線',o:'Amy',p:50,s:'prog'}],
+        fe:[{n:'資產總覽',o:'Jack',p:100,s:'done',sp:'Sprint 1'},{n:'合約下單',o:'Tina',p:72,s:'prog',sp:'Sprint 2'},{n:'TradingView',o:'Jack',p:58,s:'prog',sp:'Sprint 2'},{n:'充提幣',o:'Tina',p:30,s:'prog',sp:'Sprint 3'}],
+        be:[{n:'錢包API',o:'Eric',p:100,s:'done'},{n:'合約引擎',o:'Tom',p:78,s:'prog'},{n:'風控模組',o:'Eric',p:55,s:'prog'},{n:'提幣審核',o:'Tom',p:35,s:'prog'}],
+        qaT:[{sec:'資產頁',items:[{id:'CX-TC-01',n:'餘額',d:'各幣種正確',r:'pass'},{id:'CX-TC-02',n:'估值',d:'USDT換算',r:'pass'}]},{sec:'合約交易',items:[{id:'CX-TC-10',n:'槓桿',d:'1-125x',r:'pass'},{id:'CX-TC-11',n:'保證金',d:'精度',r:'pass'},{id:'CX-TC-12',n:'多空',d:'方向',r:'pass'},{id:'CX-TC-13',n:'強平線',d:'計算',r:'pass'},{id:'CX-TC-14',n:'止盈止損',d:'觸發',r:'pend'},{id:'CX-TC-15',n:'部分平倉',d:'比例正確',r:'pend'}]},{sec:'充提幣',items:[{id:'CX-TC-20',n:'地址生成',d:'BTC/ETH/TRC20',r:'pass'},{id:'CX-TC-21',n:'提幣限額',d:'日限/單筆',r:'pend'}]}],
+        commits:[{t:'22:30',h:'xy5z6a7',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'合約引擎 — 部分平倉 + 盈虧即時計算',f:[{n:'src/contract/partial-close.ts',a:178,d:0},{n:'src/contract/pnl-calc.ts',a:123,d:15}]},{t:'19:00',h:'xb8c9d0',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'TradingView 整合 — K 線圖 + 多時間週期',f:[{n:'src/pages/Trade/Chart.tsx',a:245,d:0},{n:'src/hooks/useTradingView.ts',a:89,d:0}]},{t:'14:20',h:'xe1f2g3',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'提幣 API — 地址驗證 + 手續費計算',f:[{n:'src/api/withdraw/verify.ts',a:98,d:0},{n:'src/api/withdraw/fee.ts',a:67,d:0}]}]
+      }
+    }
+  },
+  defi: {
+    name: 'DeFi 裂變 + VIP 體系',
+    sub: '團隊獎勵機制 ｜ v1.2 ｜ 預計 5/28 上線',
+    color: 'var(--purple)',
+    dates: [
+      {date:'5/04（一）',key:'0504'},{date:'5/05（二）',key:'0505'},{date:'5/06（三）',key:'0506'},
+    ],
+    daily: {
+      '0504':{ov:25,st:'5/18',qaS:'12/56',bugs:8,bugD:'P0:2 · P1:3 · P2:3',dO:null,dS:null,dQ:null,dB:null,
+        product:[{id:'DF-001',t:'VIP 等級體系',d:'5 級 VIP（V1-V5），依團隊業績自動升降級。',ac:6,pri:'P0',s:'prog'},{id:'DF-002',t:'團隊裂變機制',d:'推薦碼生成 + 多層佣金分潤 + 團隊樹狀圖。',ac:8,pri:'P0',s:'prog'},{id:'DF-003',t:'團隊獎勵發放',d:'日結算佣金 + 週結算管理獎 + 月結算分紅。',ac:7,pri:'P0',s:'todo'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'原型',p:80,s:'prog'},{n:'技術方案',p:50,s:'prog'}],
+        design:[{n:'VIP 等級頁面',o:'Amy',p:60,s:'prog'},{n:'團隊樹狀圖',o:'Kevin',p:30,s:'prog'},{n:'佣金明細頁',o:'Amy',p:10,s:'todo'}],
+        fe:[{n:'VIP 等級頁',o:'Jack',p:40,s:'prog',sp:'Sprint 1'},{n:'推薦碼分享',o:'Tina',p:20,s:'prog',sp:'Sprint 1'},{n:'團隊樹狀圖',o:'Jack',p:5,s:'todo',sp:'Sprint 2'}],
+        be:[{n:'VIP 升降級引擎',o:'Eric',p:50,s:'prog'},{n:'推薦關係樹',o:'Tom',p:35,s:'prog'},{n:'佣金計算服務',o:'Eric',p:10,s:'todo'}],
+        qaT:[{sec:'VIP',items:[{id:'DF-TC-01',n:'升級條件',d:'業績達標',r:'pass'},{id:'DF-TC-02',n:'降級規則',d:'30天不達標',r:'pend'}]},{sec:'裂變',items:[{id:'DF-TC-10',n:'推薦碼',d:'唯一性',r:'pass'},{id:'DF-TC-11',n:'多層分潤',d:'3層正確',r:'pend'}]}],
+        commits:[{t:'20:00',h:'df1a2b3',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'VIP 升降級引擎 — 5 級判定邏輯',f:[{n:'src/vip/tier-engine.ts',a:198,d:0}]},{t:'15:30',h:'df4c5d6',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'推薦關係樹 — 遞迴查詢 + 快取',f:[{n:'src/referral/tree.ts',a:167,d:0}]}]
+      },
+      '0505':{ov:30,st:'7/18',qaS:'18/56',bugs:7,bugD:'P0:1 · P1:3 · P2:3',dO:'+5%',dS:'+2',dQ:'+6',dB:'-1',
+        product:[{id:'DF-001',t:'VIP等級',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'DF-002',t:'裂變機制',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'DF-003',t:'獎勵發放',d:'開始規劃。',ac:7,pri:'P0',s:'prog'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'原型',p:90,s:'rev'},{n:'技術方案',p:60,s:'prog'}],
+        design:[{n:'VIP頁面',o:'Amy',p:75,s:'prog'},{n:'團隊樹狀圖',o:'Kevin',p:45,s:'prog'},{n:'佣金明細',o:'Amy',p:20,s:'prog'}],
+        fe:[{n:'VIP等級頁',o:'Jack',p:50,s:'prog',sp:'Sprint 1'},{n:'推薦碼分享',o:'Tina',p:35,s:'prog',sp:'Sprint 1'},{n:'團隊樹狀圖',o:'Jack',p:15,s:'prog',sp:'Sprint 2'}],
+        be:[{n:'VIP引擎',o:'Eric',p:60,s:'prog'},{n:'推薦關係樹',o:'Tom',p:50,s:'prog'},{n:'佣金計算',o:'Eric',p:20,s:'prog'}],
+        qaT:[{sec:'VIP',items:[{id:'DF-TC-01',n:'升級',d:'達標',r:'pass'},{id:'DF-TC-02',n:'降級',d:'30天',r:'pass'},{id:'DF-TC-03',n:'等級展示',d:'UI正確',r:'pend'}]},{sec:'裂變',items:[{id:'DF-TC-10',n:'推薦碼',d:'唯一',r:'pass'},{id:'DF-TC-11',n:'多層分潤',d:'3層',r:'pass'},{id:'DF-TC-12',n:'循環推薦',d:'防止',r:'pend'}]}],
+        commits:[{t:'21:45',h:'df7e8f9',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'feat',m:'佣金計算服務 — 日結算 + 3 層分潤',f:[{n:'src/commission/daily-calc.ts',a:234,d:0}]},{t:'17:00',h:'dfg0h1i',a:'Tina Wu',av:'TW',c:'var(--pink)',tp:'feat',m:'推薦碼分享頁 — 生成 + 複製 + 分享連結',f:[{n:'src/pages/Referral/ShareCode.tsx',a:145,d:0}]}]
+      },
+      '0506':{ov:35,st:'8/18',qaS:'22/56',bugs:6,bugD:'P0:1 · P1:2 · P2:3',dO:'+5%',dS:'+1',dQ:'+4',dB:'-1',
+        product:[{id:'DF-001',t:'VIP等級',d:'開發中。',ac:6,pri:'P0',s:'prog'},{id:'DF-002',t:'裂變機制',d:'開發中。',ac:8,pri:'P0',s:'prog'},{id:'DF-003',t:'獎勵發放',d:'開發中。',ac:7,pri:'P0',s:'prog'}],
+        ms:[{n:'PRD',p:100,s:'done'},{n:'原型',p:100,s:'done'},{n:'技術方案',p:68,s:'prog'}],
+        design:[{n:'VIP頁面',o:'Amy',p:85,s:'prog'},{n:'團隊樹狀圖',o:'Kevin',p:55,s:'prog'},{n:'佣金明細',o:'Amy',p:30,s:'prog'}],
+        fe:[{n:'VIP等級頁',o:'Jack',p:60,s:'prog',sp:'Sprint 1'},{n:'推薦碼分享',o:'Tina',p:50,s:'prog',sp:'Sprint 1'},{n:'團隊樹狀圖',o:'Jack',p:25,s:'prog',sp:'Sprint 2'}],
+        be:[{n:'VIP引擎',o:'Eric',p:70,s:'prog'},{n:'推薦關係樹',o:'Tom',p:60,s:'prog'},{n:'佣金計算',o:'Eric',p:30,s:'prog'}],
+        qaT:[{sec:'VIP',items:[{id:'DF-TC-01',n:'升級',d:'達標',r:'pass'},{id:'DF-TC-02',n:'降級',d:'30天',r:'pass'},{id:'DF-TC-03',n:'等級展示',d:'UI',r:'pass'}]},{sec:'裂變',items:[{id:'DF-TC-10',n:'推薦碼',d:'唯一',r:'pass'},{id:'DF-TC-11',n:'多層分潤',d:'3層',r:'pass'},{id:'DF-TC-12',n:'循環推薦',d:'防止',r:'pass'},{id:'DF-TC-13',n:'團隊人數',d:'統計正確',r:'pend'}]}],
+        commits:[{t:'22:15',h:'dfj2k3l',a:'Jack Huang',av:'JH',c:'var(--green)',tp:'feat',m:'VIP 等級頁 — 等級卡片 + 升級進度 + 權益列表',f:[{n:'src/pages/VIP/TierCard.tsx',a:189,d:0},{n:'src/pages/VIP/Benefits.tsx',a:112,d:0}]},{t:'19:30',h:'dfm4n5o',a:'Tom Zhang',av:'TZ',c:'var(--teal)',tp:'feat',m:'推薦關係樹 — 視覺化樹狀圖 D3.js',f:[{n:'src/pages/Team/TreeChart.tsx',a:278,d:0}]},{t:'14:00',h:'dfp6q7r',a:'Eric Lin',av:'EL',c:'var(--blue)',tp:'fix',m:'佣金計算小數精度 — 統一 8 位小數',f:[{n:'src/commission/daily-calc.ts',a:12,d:8}]}]
+      }
+    }
+  }
+};
+
+/* ============ STATE ============ */
+let curProj='usdt', curDate='0506', curTab='product';
+
+/* ============ HELPERS ============ */
+const bc=p=>p>=100?'var(--green)':p>=70?'var(--blue)':p>=40?'var(--amber)':'#B4B2A9';
+const bC=s=>({done:'b-done',prog:'b-prog',rev:'b-rev',todo:'b-todo',blk:'b-blk'})[s]||'b-todo';
+const bL=s=>({done:'已完成',prog:'進行中',rev:'審核中',todo:'未開始',blk:'Blocked'})[s]||'未開始';
+const sL=s=>({done:'已完成',prog:'開發中',rev:'待驗收',todo:'未開始'})[s]||'未開始';
+const qC=r=>({pass:'qa-pass',fail:'qa-fail',pend:'qa-pend'})[r]||'qa-pend';
+const qL=r=>({pass:'Pass',fail:'Fail',pend:'Pending'})[r]||'Pending';
+
+function getProj(){ return projects[curProj]; }
+function getDaily(){
+  const p=getProj();
+  if(p.daily[curDate]) return p.daily[curDate];
+  const keys=Object.keys(p.daily);
+  curDate=keys[keys.length-1];
+  return p.daily[curDate];
+}
+
+/* ============ RENDER ============ */
+function renderProjBar(){
+  const el=document.getElementById('projBar');
+  el.innerHTML=Object.entries(projects).map(([k,p])=>{
+    const lastKey=Object.keys(p.daily).pop();
+    const ov=p.daily[lastKey].ov;
+    return `<div class="proj-card${k===curProj?' active':''}" onclick="pickProj('${k}')">
+      <div class="pc-name"><span class="pc-dot" style="background:${p.color}"></span>${p.name}</div>
+      <div class="pc-sub">${p.sub.split('｜')[0].trim()}</div>
+      <div class="pc-prog"><div class="pc-bar"><div class="pc-fill" style="width:${ov}%;background:${p.color}"></div></div><div class="pc-pct">${ov}%</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderHeader(){
+  const p=getProj();
+  document.getElementById('headerArea').innerHTML=`
+    <div class="header-left"><h1>${p.name}</h1><p>${p.sub}</p></div>
+    <div class="header-badge hb-active"><span class="pulse"></span> 追蹤中</div>`;
+}
+
+function renderNav(){
+  const p=getProj();
+  document.getElementById('dateNav').innerHTML=p.dates.map(x=>`<button class="date-btn${x.key===curDate?' active':''}" onclick="pickDate('${x.key}')">${x.date}</button>`).join('');
+}
+
+function renderMet(){
+  const d=getDaily();
+  const diff=(v,dir)=>v?`<span class="df ${dir}">${v} vs 昨日</span>`:'<span class="df nt">首日基準</span>';
+  document.getElementById('metCards').innerHTML=`
+    <div class="mc"><div class="lb">整體進度</div><div class="vl" style="color:var(--blue)">${d.ov}%</div>${diff(d.dO,d.dO&&d.dO[0]==='+'?'up':'dn')}</div>
+    <div class="mc"><div class="lb">User story</div><div class="vl">${d.st}</div>${diff(d.dS,'up')}</div>
+    <div class="mc"><div class="lb">QA 通過</div><div class="vl">${d.qaS}</div>${diff(d.dQ,'up')}</div>
+    <div class="mc"><div class="lb">未解決 bug</div><div class="vl" style="color:var(--red)">${d.bugs}</div>${diff(d.dB,d.dB&&d.dB[0]==='-'?'up':'dn')}<div class="df nt" style="margin-top:4px">${d.bugD}</div></div>`;
+}
+
+function progSec(title,color,items,showO,showSp){
+  return `<div class="sec"><div class="st"><span class="st-dot" style="background:${color}"></span>${title}</div>
+  <div class="pr-grid">${items.map(i=>`<div class="pr">
+    <div class="prn"><div class="nm">${i.n}</div><div class="ps">${showO&&i.o?i.o:''}${showSp&&i.sp?' · '+i.sp:''}</div></div>
+    <div class="prb"><div class="bar"><div class="bf" style="width:${i.p}%;background:${bc(i.p)}"></div></div></div>
+    <div class="pp">${i.p}%</div><div class="badge ${bC(i.s)}">${bL(i.s)}</div>
+  </div>`).join('')}</div></div>`;
+}
+
+function renderTab(){
+  const d=getDaily(),b=document.getElementById('tabBody');
+  if(curTab==='product'){
+    b.innerHTML=`<div class="sec"><div class="st"><span class="st-dot" style="background:var(--purple)"></span>User story 清單</div>
+    <div class="story-grid">${d.product.map(s=>`<div class="story">
+      <div class="story-top"><span class="story-id">${s.id}</span><span class="story-pri pri-${s.pri.toLowerCase()}">${s.pri}</span><span class="badge ${bC(s.s)}" style="margin-left:auto">${sL(s.s)}</span></div>
+      <div class="story-title">${s.t}</div>
+      <div class="story-desc">${s.d}</div>
+      <div class="story-foot"><span>驗收標準：${s.ac} 項</span></div>
+    </div>`).join('')}</div></div>
+    ${progSec('產品里程碑','var(--amber)',d.ms,false,false)}`;
+  } else if(curTab==='design'){
+    b.innerHTML=progSec('UI/UX 設計進度','var(--pink)',d.design,true,false);
+  } else if(curTab==='frontend'){
+    b.innerHTML=progSec('前端開發進度','var(--green)',d.fe,true,true);
+  } else if(curTab==='backend'){
+    b.innerHTML=progSec('後端開發進度','var(--teal)',d.be,true,false);
+  } else if(curTab==='qa'){
+    const all=d.qaT.flatMap(g=>g.items);
+    const ps=all.filter(i=>i.r==='pass').length,fl=all.filter(i=>i.r==='fail').length,pd=all.filter(i=>i.r==='pend').length;
+    b.innerHTML=`<div class="mets" style="margin-bottom:1.5rem">
+      <div class="mc"><div class="lb">測試案例</div><div class="vl">${all.length}</div></div>
+      <div class="mc"><div class="lb">通過</div><div class="vl" style="color:var(--green)">${ps}</div></div>
+      <div class="mc"><div class="lb">失敗</div><div class="vl" style="color:var(--red)">${fl}</div></div>
+      <div class="mc"><div class="lb">待測</div><div class="vl" style="color:var(--amber)">${pd}</div></div>
+    </div>
+    ${d.qaT.map(g=>`<div class="sec"><div class="st"><span class="st-dot" style="background:var(--blue)"></span>${g.sec}</div>
+    <div class="qa-wrap"><table class="qa-table"><thead><tr><th style="width:90px">編號</th><th style="width:120px">測試項目</th><th>測試內容</th><th style="width:90px">結果</th></tr></thead>
+    <tbody>${g.items.map(i=>`<tr>
+      <td style="font-family:var(--mono);font-weight:600;font-size:13px">${i.id}</td>
+      <td style="font-weight:500">${i.n}</td>
+      <td style="color:var(--t2)">${i.d}</td>
+      <td><span class="qa-r ${qC(i.r)}">${qL(i.r)}</span></td>
+    </tr>`).join('')}</tbody></table></div></div>`).join('')}`;
+  } else if(curTab==='commits'){
+    const cs=d.commits||[];
+    const tA=cs.reduce((s,c)=>s+c.f.reduce((a,f)=>a+f.a,0),0);
+    const tD=cs.reduce((s,c)=>s+c.f.reduce((a,f)=>a+f.d,0),0);
+    const tF=cs.reduce((s,c)=>s+c.f.length,0);
+    b.innerHTML=`<div class="commit-head">
+      <span><b>${cs.length}</b> commits</span><span><b>${tF}</b> files</span>
+      <span class="ch-add"><b>+${tA}</b></span><span class="ch-del"><b>-${tD}</b></span>
+    </div>
+    <div class="commit-list">${cs.map(c=>`<div class="commit">
+      <div class="c-dot" style="background:${c.c}"></div>
+      <div class="c-card">
+        <div class="c-msg"><span class="c-tag c-${c.tp}">${c.tp}</span><span>${c.m}</span></div>
+        <div class="c-meta"><span class="c-time">${c.t}</span><span class="c-hash">${c.h}</span><span class="c-author"><span class="c-avatar" style="background:${c.c}">${c.av}</span>${c.a}</span></div>
+        <div class="c-files">${c.f.map(f=>`<div class="c-file-row"><span class="c-fn">${f.n}</span><span class="c-fa">+${f.a}</span><span class="c-fd">-${f.d}</span></div>`).join('')}</div>
+      </div>
+    </div>`).join('')}</div>`;
+  }
+}
+
+/* ============ ACTIONS ============ */
+function pickProj(k){
+  curProj=k;
+  const p=getProj();
+  const lastKey=Object.keys(p.daily).pop();
+  curDate=lastKey;
+  curTab='product';
+  document.querySelectorAll('.mtab').forEach((t,i)=>{t.classList.toggle('active',i===0)});
+  renderAll();
+}
+function pickDate(k){curDate=k;renderMet();renderTab();}
+function renderAll(){renderProjBar();renderHeader();renderNav();renderMet();renderTab();}
+
+document.getElementById('mainTabs').addEventListener('click',e=>{
+  if(!e.target.classList.contains('mtab'))return;
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');curTab=e.target.dataset.tab;renderTab();
+});
+
+/* ============ DATA FETCH ============ */
+function showToast(msg, type='info', duration=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='update-toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'), duration);
+}
+
+function setUpdateUI(state, msg){
+  const dot=document.getElementById('updateDot');
+  const time=document.getElementById('updateTime');
+  dot.className='update-dot '+ (state==='live'?'live':state==='err'?'err':'stale');
+  time.textContent=msg;
+}
+
+function setBtnLoading(loading){
+  const btn=document.getElementById('updateBtn');
+  if(loading){
+    btn.classList.add('loading');
+    btn.innerHTML='<span class="spin"></span> 拉取中...';
+  } else {
+    btn.classList.remove('loading');
+    btn.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1v5h5"/><path d="M2.5 10A6 6 0 1 0 3.8 4L1 6"/></svg> 更新數據';
+  }
+}
+
+async function fetchData(){
+  setBtnLoading(true);
+  setUpdateUI('stale','正在拉取最新數據...');
+
+  try {
+    const res = await fetch('data.json?t='+Date.now());
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+
+    if(!data.projects || Object.keys(data.projects).length===0){
+      throw new Error('data.json 內容為空');
+    }
+
+    // 用新資料覆蓋
+    Object.keys(projects).forEach(k=> delete projects[k]);
+    Object.assign(projects, data.projects);
+
+    // 重設到第一個專案的最新日期
+    const firstKey = Object.keys(projects)[0];
+    curProj = firstKey;
+    const p = projects[firstKey];
+    curDate = Object.keys(p.daily).pop();
+    curTab = 'product';
+    document.querySelectorAll('.mtab').forEach((t,i)=>t.classList.toggle('active',i===0));
+
+    // 更新時間顯示
+    const updatedAt = data.lastUpdated
+      ? new Date(data.lastUpdated).toLocaleString('zh-TW')
+      : new Date().toLocaleString('zh-TW');
+    setUpdateUI('live', '資料更新於 '+updatedAt);
+    document.getElementById('footerArea').textContent='Dashboard — 資料來源：data.json · 更新於 '+updatedAt;
+
+    renderAll();
+    showToast('數據更新成功！已載入 '+Object.keys(projects).length+' 個專案', 'success');
+
+  } catch(e) {
+    console.error('Fetch error:', e);
+    setUpdateUI('err','更新失敗');
+
+    if(e.message.includes('404') || e.message.includes('Failed to fetch')){
+      showToast('找不到 data.json — 請先設定資料收集排程（詳見產品文檔）', 'error', 5000);
+    } else {
+      showToast('更新失敗：'+e.message, 'error', 4000);
+    }
+  } finally {
+    setBtnLoading(false);
+  }
+}
+
+renderAll();
+</script>
+</body>
+</html>
